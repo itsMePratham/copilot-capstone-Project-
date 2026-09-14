@@ -46,7 +46,7 @@ npm run docsync -- sync --openapi openapi.yaml --readme README.md
 
 - **FR-1:** The project shall provide an npm script that invokes the CLI with `npm run docsync -- ...`.
 - **FR-2:** The CLI shall support the `sync` command with required `--openapi <path>` and `--readme <path>` options.
-- **FR-3:** The CLI shall resolve relative input paths from `process.cwd()` and read both files as UTF-8.
+- **FR-3:** The CLI shall resolve relative input paths from `process.cwd()`, read each file as a `Buffer`, and decode it using `new TextDecoder('utf-8', { fatal: true })` so malformed UTF-8 is rejected rather than replaced.
 - **FR-4:** The CLI shall parse the OpenAPI input as YAML. The parsed YAML root shall be a non-null object and shall not be an array. The root object's `openapi` value shall be a string beginning with `3.`. Versions such as `3.0`, `3.0.0`, `3.0.10`, and `3.1.0` are accepted.
 - **FR-5:** The CLI shall reject missing or non-string `openapi` values and version strings that do not begin with `3.`.
 - **FR-6:** The CLI shall require `paths` to be a non-null object that is not an array. An empty `paths` object is valid.
@@ -57,7 +57,7 @@ npm run docsync -- sync --openapi openapi.yaml --readme README.md
 - **FR-11:** For each operation, the generator shall use only `operation.summary`. Missing, blank, non-string, or whitespace-only summaries shall be rendered as `-`; path-level summaries shall never be used.
 - **FR-12:** The generator shall normalize path and summary values by replacing each contiguous run of spaces, tabs, carriage returns, and line feeds with a single space, trimming the result, and escaping every `|` as `\|` for Markdown table safety.
 - **FR-13:** The generator shall include one row for every recognized operation, including uncommon recognized methods when present.
-- **FR-14:** The generator shall sort rows by normalized path alphabetically, then by the original path key, then by method precedence. Method precedence shall be `GET=0`, `POST=1`, `PUT=2`, `PATCH=3`, `DELETE=4`, `HEAD=5`, `OPTIONS=6`, and `TRACE=7`; any other recognized methods shall be ordered alphabetically after these methods.
+- **FR-14:** The generator shall use a locale-independent UTF-16 code-unit comparator (`a < b`, `a > b`) to sort rows by normalized path, then by the original path key, then by method precedence. Method precedence shall be `GET=0`, `POST=1`, `PUT=2`, `PATCH=3`, `DELETE=4`, `HEAD=5`, `OPTIONS=6`, and `TRACE=7`; any other recognized methods shall be ordered with the same comparator after these methods.
 - **FR-15:** The generated table shall use exactly this header and separator:
 
   ```text
@@ -67,7 +67,7 @@ npm run docsync -- sync --openapi openapi.yaml --readme README.md
 
   It shall contain one row per operation and a trailing newline after the final table row. For empty `paths`, it shall contain only the header, separator, and required trailing newline.
 - **FR-16:** The CLI shall require exactly one occurrence of `<!-- API_REFERENCE_START -->` and exactly one occurrence of `<!-- API_REFERENCE_END -->`, with the start marker before the end marker.
-- **FR-17:** The CLI shall replace all existing content between the markers with only the generated table content. The markers shall remain unchanged, and content outside the marker pair shall remain unchanged.
+- **FR-17:** The CLI shall discard all existing content between the exact marker tokens and construct the replacement interior as `eol + tableUsingEol`, where the table ends with one `eol`. The markers shall remain unchanged and on separate lines, and content outside the marker pair shall remain byte-for-byte unchanged.
 - **FR-18:** The CLI shall preserve the README's existing line-ending style, LF or CRLF, when writing the updated file.
 - **FR-19:** The CLI shall write the README only when the generated result differs from the existing content. It shall print exactly `README updated.` when the file changes and exactly `README already up-to-date.` when no change is needed.
 - **FR-20:** The CLI shall return exit code `0` after a successful update or when the README is already current.
@@ -132,7 +132,7 @@ npm run docsync -- sync --openapi openapi.yaml --readme README.md
 - **AC-5 (FR-15):** The generated content uses the exact required table header and separator, has one row per operation, and has a trailing newline; empty `paths` has no rows.
 - **AC-6 (FR-16, FR-17, FR-18):** Exactly one correctly ordered marker pair is required; only the content between markers is replaced and the README line-ending style is preserved.
 - **AC-7 (FR-19, FR-20):** Changed files produce exactly `README updated.` and exit `0`; unchanged files produce exactly `README already up-to-date.` and exit `0` without rewriting.
-- **AC-8 (FR-21, ER-1 through ER-10):** Missing files, invalid arguments, YAML errors, duplicate keys, invalid structures, and marker errors write actionable errors to stderr and exit `1` without partial output.
+- **AC-8 (FR-21 through FR-23, ER-1 through ER-14):** Missing files, invalid arguments, YAML errors, duplicate keys, invalid structures, marker errors, decoding errors, directory inputs, and write failures write actionable errors to stderr and exit `1` without partial output or success messages.
 - **AC-9 (NFR-1 through NFR-8):** The implementation is portable, deterministic, idempotent, maintainable, usable, secure, and does not require network access.
 
 ## Test Scenarios
