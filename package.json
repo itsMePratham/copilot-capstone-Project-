@@ -1,0 +1,26 @@
+{
+  "name": "copilot-capstone-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Synchronize a README API reference from an OpenAPI document.",
+  "main": "src/cli.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "docsync": "node src/cli.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "jest": "^30.1.3",
+    "prettier": "^3.6.2"
+  }
+}
